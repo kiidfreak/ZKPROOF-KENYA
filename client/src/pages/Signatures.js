@@ -14,7 +14,7 @@ const Signatures = () => {
   const fetchPendingDocuments = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/documents?status=pending', {
+      const response = await fetch('/api/signatures/pending', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -171,24 +171,54 @@ const Signatures = () => {
           </div>
         ) : (
           <div className="grid gap-4">
-            {pendingDocuments.map((doc) => (
-              <div key={doc.id} className="bg-[#2a2f3b] rounded-lg p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-100">{doc.title}</h3>
-                  <p className="text-sm text-gray-300">{doc.description}</p>
-                  <p className="text-sm text-gray-400">
-                    Created by {doc.createdBy?.username || 'Unknown'} on {new Date(doc.createdAt).toLocaleDateString()}
-                  </p>
+            {pendingDocuments.map((doc) => {
+              const isOwner = doc.owner?._id === user?._id;
+              const userRole = doc.userRole || 'viewer';
+              
+              return (
+                <div key={doc.id} className="bg-[#2a2f3b] rounded-lg p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-100">{doc.title}</h3>
+                    <p className="text-sm text-gray-300">{doc.description}</p>
+                    <p className="text-sm text-gray-400">
+                      Created by {doc.owner?.firstName || 'Unknown'} {doc.owner?.lastName || ''} on {new Date(doc.createdAt).toLocaleDateString()}
+                    </p>
+                    {isOwner && (
+                      <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">
+                        Your Document
+                      </span>
+                    )}
+                    {!isOwner && userRole !== 'viewer' && (
+                      <span className="inline-block mt-2 px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                        {userRole === 'required_signer' ? 'Required Signer' : 'Optional Signer'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {!isOwner && userRole !== 'viewer' && (
+                      <button
+                        onClick={() => handleSignDocument(doc.id)}
+                        disabled={loading}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {loading ? 'Signing...' : 'Sign Document'}
+                      </button>
+                    )}
+                    {isOwner && (
+                      <span className="text-sm text-gray-400 px-4 py-2">
+                        Awaiting signatures
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleViewSignedDocument(doc.id)}
+                      className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md"
+                    >
+                      View Details
+                    </button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleSignDocument(doc.id)}
-                  disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? 'Signing...' : 'Sign Document'}
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

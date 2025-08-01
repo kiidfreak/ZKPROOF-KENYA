@@ -200,6 +200,17 @@ router.post('/:documentId/submit', authenticate, async (req, res) => {
     document.status = 'pending';
     document.submittedAt = new Date();
     
+    // For demo purposes: automatically assign other users as signers
+    // In a real system, this would be done through a UI where users select signers
+    if (!document.requiredSigners || document.requiredSigners.length === 0) {
+      // Find other users to assign as signers
+      const otherUsers = await User.find({ _id: { $ne: req.user._id } }).limit(2);
+      if (otherUsers.length > 0) {
+        document.requiredSigners = otherUsers.map(user => user._id);
+        console.log('Auto-assigned signers:', otherUsers.map(u => u.email));
+      }
+    }
+    
     await document.save();
     
     res.json({
@@ -211,6 +222,45 @@ router.post('/:documentId/submit', authenticate, async (req, res) => {
     console.error('Submit document error:', error);
     res.status(500).json({ 
       error: 'Failed to submit document for signing' 
+    });
+  }
+});
+
+// Assign signers to document
+router.post('/:documentId/assign-signers', authenticate, async (req, res) => {
+  try {
+    const { requiredSigners = [], optionalSigners = [] } = req.body;
+    
+    const document = await Document.findById(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Check if user owns the document
+    if (document.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to modify this document' });
+    }
+    
+    // Update signers
+    document.requiredSigners = requiredSigners;
+    document.optionalSigners = optionalSigners;
+    
+    await document.save();
+    
+    // Populate signer information
+    await document.populate('requiredSigners', 'firstName lastName email');
+    await document.populate('optionalSigners', 'firstName lastName email');
+    
+    res.json({
+      message: 'Signers assigned successfully',
+      document: document.getSummary()
+    });
+    
+  } catch (error) {
+    console.error('Assign signers error:', error);
+    res.status(500).json({ 
+      error: 'Failed to assign signers' 
     });
   }
 });

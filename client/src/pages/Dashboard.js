@@ -64,7 +64,7 @@ const Dashboard = () => {
           documentsCount = documentsData.documents?.length || 0;
         }
 
-        // Fetch pending signatures count
+        // Fetch pending signatures count (only documents user can sign)
         const signaturesResponse = await fetch('/api/signatures/pending', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -74,7 +74,14 @@ const Dashboard = () => {
         let signaturesCount = 0;
         if (signaturesResponse.ok) {
           const signaturesData = await signaturesResponse.json();
-          signaturesCount = signaturesData.signatures?.length || 0;
+          console.log('Signatures response:', signaturesData);
+          // Only count documents where user is not the owner (can actually sign)
+          signaturesCount = signaturesData.documents?.filter(doc => 
+            doc.owner?._id !== user?._id
+          ).length || 0;
+          console.log('Signatures count:', signaturesCount);
+        } else {
+          console.error('Signatures response not ok:', signaturesResponse.status);
         }
 
         // Update stats with real data
