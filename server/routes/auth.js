@@ -174,7 +174,17 @@ router.get('/profile', authenticate, async (req, res) => {
 router.put('/profile', authenticate, [
   body('firstName').optional().trim().notEmpty().withMessage('First name cannot be empty'),
   body('lastName').optional().trim().notEmpty().withMessage('Last name cannot be empty'),
-  body('phone').optional().isMobilePhone().withMessage('Valid phone number is required'),
+  body('phone').optional().custom((value) => {
+    if (value === '' || value === null || value === undefined) {
+      return true; // Allow empty values
+    }
+    // If a value is provided, validate it's a mobile phone
+    const mobilePhoneRegex = /^(\+?1)?[-.\s]?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})$/;
+    if (!mobilePhoneRegex.test(value)) {
+      throw new Error('Please provide a valid phone number (e.g., +1234567890)');
+    }
+    return true;
+  }),
   body('profile.bio').optional().trim(),
   body('profile.company').optional().trim(),
   body('profile.position').optional().trim()
@@ -183,6 +193,7 @@ router.put('/profile', authenticate, [
     // Check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Profile update validation errors:', errors.array());
       return res.status(400).json({ 
         error: 'Validation failed', 
         details: errors.array() 

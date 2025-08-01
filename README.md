@@ -6,4 +6,10 @@
    npm install
 4. npm run dev
 
+
+
+npm run client
+npm run node
+npm run server
+
 5. If you do not install mongodb, then just install it.

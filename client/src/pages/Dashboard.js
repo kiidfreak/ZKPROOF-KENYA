@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -14,8 +14,7 @@ import {
 
 const Dashboard = () => {
   const { user } = useAuth();
-
-  const stats = [
+  const [stats, setStats] = useState([
     {
       name: 'Identity Verification Status',
       value: user?.identityVerified ? 'Verified' : 'Not Verified',
@@ -26,7 +25,7 @@ const Dashboard = () => {
     },
     {
       name: 'My Documents',
-      value: '0 documents',
+      value: 'Loading...',
       icon: DocumentTextIcon,
       color: 'text-blue-600',
       bgColor: 'bg-blue-100',
@@ -34,13 +33,88 @@ const Dashboard = () => {
     },
     {
       name: 'Pending Signatures',
-      value: '0 signatures',
+      value: 'Loading...',
       icon: ClipboardDocumentListIcon,
       color: 'text-purple-600',
       bgColor: 'bg-purple-100',
       href: '/signatures'
     }
-  ];
+  ]);
+
+  // Fetch document and signature counts
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch documents count
+        const documentsResponse = await fetch('/api/documents', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        let documentsCount = 0;
+        if (documentsResponse.ok) {
+          const documentsData = await documentsResponse.json();
+          documentsCount = documentsData.documents?.length || 0;
+        }
+
+        // Fetch pending signatures count
+        const signaturesResponse = await fetch('/api/signatures/pending', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        let signaturesCount = 0;
+        if (signaturesResponse.ok) {
+          const signaturesData = await signaturesResponse.json();
+          signaturesCount = signaturesData.signatures?.length || 0;
+        }
+
+        // Update stats with real data
+        setStats([
+          {
+            name: 'Identity Verification Status',
+            value: user?.identityVerified ? 'Verified' : 'Not Verified',
+            icon: ShieldCheckIcon,
+            color: user?.identityVerified ? 'text-green-600' : 'text-yellow-600',
+            bgColor: user?.identityVerified ? 'bg-green-100' : 'bg-yellow-100',
+            href: '/identity'
+          },
+          {
+            name: 'My Documents',
+            value: `${documentsCount} document${documentsCount !== 1 ? 's' : ''}`,
+            icon: DocumentTextIcon,
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-100',
+            href: '/documents'
+          },
+          {
+            name: 'Pending Signatures',
+            value: `${signaturesCount} signature${signaturesCount !== 1 ? 's' : ''}`,
+            icon: ClipboardDocumentListIcon,
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-100',
+            href: '/signatures'
+          }
+        ]);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        // Set fallback values on error
+        setStats(prevStats => prevStats.map(stat => {
+          if (stat.name === 'My Documents') {
+            return { ...stat, value: '0 documents' };
+          }
+          if (stat.name === 'Pending Signatures') {
+            return { ...stat, value: '0 signatures' };
+          }
+          return stat;
+        }));
+      }
+    };
+
+    fetchStats();
+  }, [user?.identityVerified]);
 
   const quickActions = [
     {
@@ -80,13 +154,13 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-[#23272f] rounded-lg shadow-sm border border-gray-700 p-6">
+      <div className="bg-white dark:bg-[#23272f] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-100">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Hello, {user?.firstName}!
             </h1>
-            <p className="mt-1 text-gray-300">
+            <p className="mt-1 text-gray-600 dark:text-gray-300">
               Welcome to BKC Verify, the blockchain-based identity verification and electronic document signing system.
             </p>
           </div>
@@ -109,17 +183,17 @@ const Dashboard = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
-          <div key={stat.name} className="bg-[#23272f] rounded-lg shadow-sm border border-gray-700 p-4">
+          <div key={stat.name} className="bg-white dark:bg-[#23272f] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-200">
             <div className="flex items-center">
               <div className={`flex-shrink-0 ${stat.bgColor} rounded-md p-3`}>
                 <stat.icon className={`h-6 w-6 ${stat.color}`} />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-300 truncate">
+                  <dt className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
                     {stat.name}
                   </dt>
-                  <dd className="text-lg font-medium text-gray-100">
+                  <dd className="text-lg font-medium text-gray-900 dark:text-gray-100">
                     {stat.value}
                   </dd>
                 </dl>

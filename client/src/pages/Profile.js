@@ -53,7 +53,13 @@ const Profile = () => {
       if (result.success) {
         toast.success('Profile updated!');
       } else {
-        toast.error('Failed to update profile.');
+        // Show specific error message
+        const errorMessage = result.error || 'Failed to update profile.';
+        if (errorMessage.includes('phone number')) {
+          toast.error('Please provide a valid phone number (e.g., +1234567890)');
+        } else {
+          toast.error(errorMessage);
+        }
       }
     } catch (error) {
       toast.error('Failed to update profile.');

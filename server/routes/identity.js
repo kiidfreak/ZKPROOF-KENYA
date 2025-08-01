@@ -79,6 +79,7 @@ router.post('/verify', authenticate, upload.single('idFile'), identityVerificati
     // Check validation errors
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({ 
         error: 'Validation failed', 
         details: errors.array() 
@@ -88,8 +89,10 @@ router.post('/verify', authenticate, upload.single('idFile'), identityVerificati
     // Check if already verified
     const user = await User.findById(req.user._id);
     if (user.identityVerified) {
+      console.log('User already verified:', user._id);
       return res.status(400).json({ 
-        error: 'Identity is already verified' 
+        error: 'Identity is already verified',
+        details: 'User has already completed identity verification'
       });
     }
 
@@ -141,10 +144,17 @@ router.post('/verify', authenticate, upload.single('idFile'), identityVerificati
 
     await user.save();
 
+    // Convert BigInt values to strings for JSON serialization
+    const serializedBlockchainResult = {
+      transactionHash: blockchainResult.transactionHash,
+      blockNumber: blockchainResult.blockNumber ? blockchainResult.blockNumber.toString() : blockchainResult.blockNumber,
+      verificationHash: blockchainResult.verificationHash
+    };
+
     res.json({
       message: 'Identity verification submitted successfully',
       verificationData: user.verificationData,
-      blockchainTransaction: blockchainResult
+      blockchainTransaction: serializedBlockchainResult
     });
 
   } catch (error) {
