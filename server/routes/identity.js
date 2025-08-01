@@ -3,6 +3,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { authenticate, requireIdentityVerification } = require('../middleware/auth');
 const blockchainService = require('../services/blockchainService');
+const documentValidationService = require('../services/documentValidationService');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
@@ -105,7 +106,32 @@ router.post('/verify', authenticate, upload.single('idFile'), identityVerificati
 
     const { idType, idNumber, dateOfBirth, nationality, fullName } = req.body;
 
-    // Create verification data
+    // Validate document content against input data
+    const documentPath = path.join(__dirname, '../..', req.file.path);
+    const inputData = {
+      documentType: idType,
+      documentNumber: idNumber,
+      dateOfBirth: dateOfBirth,
+      nationality: nationality,
+      fullName: fullName
+    };
+
+    console.log('Validating document against input data...');
+    const validationResult = await documentValidationService.validateDocument(documentPath, inputData);
+    
+    if (!validationResult.isValid) {
+      console.log('Document validation failed:', validationResult.errors);
+      return res.status(400).json({
+        error: 'Document validation failed',
+        details: validationResult.errors,
+        validationScore: validationResult.score,
+        extractedData: validationResult.extractedData
+      });
+    }
+
+    console.log('Document validation successful. Score:', validationResult.score);
+
+    // Create verification data using validated information
     const verificationData = {
       documentType: idType,
       documentNumber: idNumber,
@@ -113,7 +139,9 @@ router.post('/verify', authenticate, upload.single('idFile'), identityVerificati
       nationality,
       verificationDate: new Date(),
       documentFile: req.file.filename,
-      fullName
+      fullName,
+      validationScore: validationResult.score,
+      extractedData: validationResult.extractedData
     };
 
     // Create digital signature for verification data

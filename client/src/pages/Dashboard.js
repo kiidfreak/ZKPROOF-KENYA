@@ -202,7 +202,7 @@ const Dashboard = () => {
             <div className="mt-4">
               <Link
                 to={stat.href}
-                className="text-sm font-medium text-blue-400 hover:text-blue-300"
+                className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
               >
                 View Details
                 <ArrowRightIcon className="inline h-4 w-4 ml-1" />
@@ -213,14 +213,14 @@ const Dashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-[#23272f] rounded-lg shadow-sm border border-gray-700 p-6">
-        <h2 className="text-lg font-medium text-gray-100 mb-4">Quick Actions</h2>
+      <div className="bg-white dark:bg-[#23272f] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
             <Link
               key={action.name}
               to={action.href}
-              className={`relative rounded-lg border border-gray-700 p-4 hover:border-gray-600 transition-colors ${
+              className={`relative rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 transition-colors duration-200 ${
                 action.disabled ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
@@ -229,10 +229,10 @@ const Dashboard = () => {
                   <action.icon className="h-5 w-5 text-white" />
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-100">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                     {action.name}
                   </h3>
-                  <p className="text-sm text-gray-300">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
                     {action.description}
                   </p>
                 </div>
@@ -248,10 +248,10 @@ const Dashboard = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-[#23272f] rounded-lg shadow-sm border border-gray-700 p-6">
-        <h2 className="text-lg font-medium text-gray-100 mb-4">Recent Activity</h2>
+      <div className="bg-white dark:bg-[#23272f] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h2>
         <div className="space-y-4">
-          <div className="flex items-center text-gray-400">
+          <div className="flex items-center text-gray-500 dark:text-gray-400">
             <ClockIcon className="h-5 w-5 mr-3" />
             <span className="text-sm">No recent activity yet.</span>
           </div>
@@ -259,23 +259,23 @@ const Dashboard = () => {
       </div>
 
       {/* Blockchain Status */}
-      <div className="bg-[#23272f] rounded-lg shadow-sm border border-gray-700 p-6">
-        <h2 className="text-lg font-medium text-gray-100 mb-4">Blockchain Status</h2>
+      <div className="bg-white dark:bg-[#23272f] rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-200">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4">Blockchain Status</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex items-center justify-between p-4 bg-[#232c3a] rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-[#232c3a] rounded-lg transition-colors duration-200">
             <div>
-              <p className="text-sm font-medium text-gray-100">Network</p>
-              <p className="text-sm text-gray-300">Sepolia Testnet</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Network</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Sepolia Testnet</p>
             </div>
             <div className="flex items-center">
               <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-              <span className="text-sm text-green-400">Connected</span>
+              <span className="text-sm text-green-600 dark:text-green-400">Connected</span>
             </div>
           </div>
-          <div className="flex items-center justify-between p-4 bg-[#232c3a] rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-[#232c3a] rounded-lg transition-colors duration-200">
             <div>
-              <p className="text-sm font-medium text-gray-100">Wallet Address</p>
-              <p className="text-sm text-gray-300 font-mono">
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Wallet Address</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 font-mono">
                 {user?.walletAddress ? 
                   `${user.walletAddress.slice(0, 6)}...${user.walletAddress.slice(-4)}` : 
                   'Generating...'

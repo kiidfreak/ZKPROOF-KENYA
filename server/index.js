@@ -10,6 +10,7 @@ const { Server } = require('socket.io');
 
 const connectDB = require('./config/database');
 const blockchainService = require('./services/blockchainService');
+const documentValidationService = require('./services/documentValidationService');
 const authRoutes = require('./routes/auth');
 const identityRoutes = require('./routes/identity');
 const documentRoutes = require('./routes/documents');
@@ -123,13 +124,17 @@ const startServer = async () => {
     // Connect to database
     await connectDB();
 
-    // Initialize blockchain connection
-    await blockchainService.initialize();
+    // Initialize services
+    await Promise.all([
+      blockchainService.initialize(),
+      documentValidationService.initialize()
+    ]);
 
     server.listen(PORT, () => {
       console.log(`Server with Socket.io running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV}`);
       console.log(`Blockchain: ${blockchainService.isConnected() ? 'Connected' : 'Disconnected'}`);
+      console.log(`Document Validation: Ready`);
     });
   } catch (error) {
     console.error('Failed to start server:', error);
