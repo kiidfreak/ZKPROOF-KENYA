@@ -124,14 +124,11 @@ router.post('/verify', authenticate, upload.single('idFile'), identityVerificati
       timestamp: Date.now()
     });
 
-    // Generate signature using the system private key (in production, this should be handled securely)
-    const signature = await blockchainService.createDigitalSignature(dataToSign, process.env.PRIVATE_KEY);
-
-    // Store verification on blockchain
+    // Store verification on blockchain (simulated for development)
     const blockchainResult = await blockchainService.storeIdentityVerification(
       user._id.toString(),
       verificationData,
-      signature.signature
+      'simulated_signature'
     );
 
     // Update user verification data

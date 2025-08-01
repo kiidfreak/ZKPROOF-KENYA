@@ -148,7 +148,7 @@ class BlockchainService {
       
       // Create hashes for individual identity fields for privacy
       const fullNameHash = this.web3.utils.sha3(identityData.fullName || '');
-      const dateOfBirthHash = this.web3.utils.sha3(identityData.dateOfBirth || '');
+      const dateOfBirthHash = this.web3.utils.sha3(identityData.dateOfBirth ? identityData.dateOfBirth.toISOString().split('T')[0] : '');
       const nationalityHash = this.web3.utils.sha3(identityData.nationality || '');
       const documentTypeHash = this.web3.utils.sha3(identityData.documentType || '');
       const documentNumberHash = this.web3.utils.sha3(identityData.documentNumber || '');

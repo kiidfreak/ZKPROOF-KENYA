@@ -64,27 +64,17 @@ const IdentityVerification = () => {
       submitData.append('nationality', formData.nationality);
       submitData.append('fullName', `${user.firstName} ${user.lastName}`);
 
-      const response = await fetch('/api/identity/verify', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: submitData
-      });
+      const response = await identityAPI.verify(submitData);
 
-      if (response.ok) {
-        const result = await response.json();
+      if (response.data) {
         toast.success('Identity verification submitted successfully!');
-        setVerificationStatus(result);
+        setVerificationStatus(response.data);
         setShowForm(false);
         window.location.reload();
-      } else {
-        const error = await response.json();
-        toast.error(error.error || 'Failed to submit identity verification');
       }
     } catch (error) {
       console.error('Verification error:', error);
-      toast.error('Failed to submit identity verification');
+      toast.error(error.response?.data?.error || 'Failed to submit identity verification');
     } finally {
       setLoading(false);
     }
