@@ -6,7 +6,7 @@
    npm install
 4. npm run dev
 
-
+new:
 
 npm run client
 npm run node
