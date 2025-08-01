@@ -40,6 +40,12 @@ const documentSchema = new mongoose.Schema({
     enum: ['draft', 'pending', 'signed', 'expired', 'cancelled'],
     default: 'draft'
   },
+  submittedAt: {
+    type: Date
+  },
+  signedAt: {
+    type: Date
+  },
   signatures: [{
     signer: {
       type: mongoose.Schema.Types.ObjectId,
@@ -179,12 +185,24 @@ documentSchema.methods.isFullySigned = function() {
 // Method to get document summary
 documentSchema.methods.getSummary = function() {
   return {
+    _id: this._id,
     id: this._id,
     title: this.title,
+    description: this.description,
+    fileName: this.fileName,
+    fileSize: this.fileSize,
+    fileType: this.fileType,
     status: this.status,
+    submittedAt: this.submittedAt,
+    signedAt: this.signedAt,
     signatureCount: this.signatureCount,
     requiredSignatureCount: this.requiredSignatureCount,
     completionPercentage: this.completionPercentage,
+    metadata: this.metadata,
+    owner: this.owner,
+    requiredSigners: this.requiredSigners,
+    optionalSigners: this.optionalSigners,
+    signatures: this.signatures,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt
   };

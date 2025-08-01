@@ -1,29 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { identityAPI } from '../services/api';
-import { ShieldCheckIcon, CheckCircleIcon, ExclamationTriangleIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
 const IdentityVerification = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [isVerified, setIsVerified] = useState(user?.identityVerified || false);
+  
+  // Check verification status on component mount
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      try {
+        const response = await identityAPI.getStatus();
+        setIsVerified(response.data.verified);
+        if (response.data.verified) {
+          setVerificationStatus(response.data);
+        }
+      } catch (error) {
+        console.error('Failed to check verification status:', error);
+      }
+    };
+    
+    checkVerificationStatus();
+  }, []);
+  
   const [formData, setFormData] = useState({
     idType: 'passport',
     idNumber: '',
     dateOfBirth: '',
     nationality: '',
-    idFile: null
+    fullName: ''
   });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [error, setError] = useState('');
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setFormData({
-        ...formData,
-        idFile: file
-      });
+      setSelectedFile(file);
     }
   };
 
@@ -34,47 +52,68 @@ const IdentityVerification = () => {
     });
   };
 
-  const handleVerification = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.idFile) {
-      toast.error('Please upload your ID proof');
-      return;
-    }
-    if (!formData.idNumber.trim()) {
-      toast.error('Please enter your ID number');
-      return;
-    }
-    if (!formData.dateOfBirth) {
-      toast.error('Please enter your date of birth');
-      return;
-    }
-    if (!formData.nationality.trim()) {
-      toast.error('Please enter your nationality');
-      return;
-    }
-
     setLoading(true);
+    setError('');
+
+    const submitData = new FormData();
+    submitData.append('idFile', selectedFile);
+    submitData.append('idType', formData.idType);
+    submitData.append('idNumber', formData.idNumber);
+    submitData.append('dateOfBirth', formData.dateOfBirth);
+    submitData.append('nationality', formData.nationality);
+    submitData.append('fullName', `${user.firstName} ${user.lastName}`);
+
     try {
-      const submitData = new FormData();
-      submitData.append('idFile', formData.idFile);
-      submitData.append('idType', formData.idType);
-      submitData.append('idNumber', formData.idNumber);
-      submitData.append('dateOfBirth', formData.dateOfBirth);
-      submitData.append('nationality', formData.nationality);
-      submitData.append('fullName', `${user.firstName} ${user.lastName}`);
-
       const response = await identityAPI.verify(submitData);
-
-      if (response.data) {
-        toast.success('Identity verification submitted successfully!');
-        setVerificationStatus(response.data);
-        setShowForm(false);
-        window.location.reload();
+      toast.success('Identity verification submitted successfully!');
+      
+      // Update local state
+      setIsVerified(true);
+      setVerificationStatus(response.data);
+      setShowForm(false);
+      
+      // Update user context if available
+      if (updateUser) {
+        updateUser({ ...user, identityVerified: true });
       }
+      
+      setFormData({
+        idType: 'passport',
+        idNumber: '',
+        dateOfBirth: '',
+        nationality: '',
+        fullName: ''
+      });
+      setSelectedFile(null);
     } catch (error) {
       console.error('Verification error:', error);
-      toast.error(error.response?.data?.error || 'Failed to submit identity verification');
+      
+      // Enhanced error handling for document validation
+      if (error.response?.data?.error === 'Document validation failed') {
+        const details = error.response.data.details;
+        const validationScore = error.response.data.validationScore;
+        
+        let errorMessage = 'Document validation failed:\n';
+        
+        if (Array.isArray(details)) {
+          details.forEach(detail => {
+            errorMessage += `• ${detail}\n`;
+          });
+        }
+        
+        if (validationScore !== undefined) {
+          errorMessage += `\nValidation Score: ${(validationScore * 100).toFixed(1)}%`;
+        }
+        
+        setError(errorMessage);
+        toast.error('Document validation failed. Please check your document and input data.');
+      } else {
+        const errorMsg = error.response?.data?.error || 'Identity verification failed. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -92,7 +131,7 @@ const IdentityVerification = () => {
         </div>
       </div>
 
-      {user?.identityVerified ? (
+      {isVerified || user?.identityVerified ? (
         <div className="bg-green-50 border border-green-200 rounded-lg p-6">
           <div className="flex items-center">
             <CheckCircleIcon className="h-8 w-8 text-green-600 mr-3" />
@@ -147,7 +186,7 @@ const IdentityVerification = () => {
       {showForm && (
         <div className="bg-[#23272f] rounded-lg shadow-sm border border-gray-700 p-6">
           <h2 className="text-lg font-medium text-gray-100 mb-4">Identity Verification Form</h2>
-          <form onSubmit={handleVerification} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-100 mb-1">
                 ID Type *
@@ -241,6 +280,13 @@ const IdentityVerification = () => {
                 Supported formats: PDF, JPG, PNG (Max 10MB)
               </p>
             </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-800">
+                <h3 className="text-sm font-medium mb-1">Error:</h3>
+                <p className="text-xs">{error}</p>
+              </div>
+            )}
 
             <div className="flex justify-end space-x-3 pt-4">
               <button
