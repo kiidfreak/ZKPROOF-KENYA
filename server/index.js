@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://yourdomain.com']
+    ? [process.env.CLIENT_URL || 'https://yourdomain.com']
     : ['http://localhost:3000'],
   credentials: true
 }));
@@ -51,6 +51,24 @@ if (process.env.NODE_ENV === 'development') {
 
 // Static files
 app.use('/uploads', express.static('uploads'));
+
+// API base route
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'BKCVerify API is running',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      identity: '/api/identity',
+      documents: '/api/documents',
+      signatures: '/api/signatures',
+      chat: '/api/chat',
+      forum: '/api/forum'
+    }
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -88,7 +106,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? ['https://yourdomain.com']
+      ? [process.env.CLIENT_URL || 'https://yourdomain.com']
       : ['http://localhost:3000'],
     credentials: true
   }
