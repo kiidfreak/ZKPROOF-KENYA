@@ -177,6 +177,133 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+// Submit document for signing
+router.post('/:documentId/submit', authenticate, async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Check if user owns the document
+    if (document.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to modify this document' });
+    }
+    
+    // Check if document is in draft status
+    if (document.status !== 'draft') {
+      return res.status(400).json({ error: 'Document is not in draft status' });
+    }
+    
+    // Update document status to pending
+    document.status = 'pending';
+    document.submittedAt = new Date();
+    
+    // For demo purposes: automatically assign other users as signers
+    // In a real system, this would be done through a UI where users select signers
+    if (!document.requiredSigners || document.requiredSigners.length === 0) {
+      // Find other users to assign as signers
+      const otherUsers = await User.find({ _id: { $ne: req.user._id } }).limit(2);
+      if (otherUsers.length > 0) {
+        document.requiredSigners = otherUsers.map(user => user._id);
+        console.log('Auto-assigned signers:', otherUsers.map(u => u.email));
+      }
+    }
+    
+    await document.save();
+    
+    res.json({
+      message: 'Document submitted for signing successfully',
+      document: document.getSummary()
+    });
+    
+  } catch (error) {
+    console.error('Submit document error:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit document for signing' 
+    });
+  }
+});
+
+// Assign signers to document
+router.post('/:documentId/assign-signers', authenticate, async (req, res) => {
+  try {
+    const { requiredSigners = [], optionalSigners = [] } = req.body;
+    
+    const document = await Document.findById(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Check if user owns the document
+    if (document.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to modify this document' });
+    }
+    
+    // Update signers
+    document.requiredSigners = requiredSigners;
+    document.optionalSigners = optionalSigners;
+    
+    await document.save();
+    
+    // Populate signer information
+    await document.populate('requiredSigners', 'firstName lastName email');
+    await document.populate('optionalSigners', 'firstName lastName email');
+    
+    res.json({
+      message: 'Signers assigned successfully',
+      document: document.getSummary()
+    });
+    
+  } catch (error) {
+    console.error('Assign signers error:', error);
+    res.status(500).json({ 
+      error: 'Failed to assign signers' 
+    });
+  }
+});
+
+// Delete document
+router.delete('/:documentId', authenticate, async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.documentId);
+    
+    if (!document) {
+      return res.status(404).json({ error: 'Document not found' });
+    }
+    
+    // Check if user owns the document
+    if (document.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to delete this document' });
+    }
+    
+    // Check if document can be deleted (only draft documents)
+    if (document.status !== 'draft') {
+      return res.status(400).json({ error: 'Only draft documents can be deleted' });
+    }
+    
+    // Delete the file from storage
+    if (document.filePath && fs.existsSync(document.filePath)) {
+      fs.unlinkSync(document.filePath);
+    }
+    
+    // Delete the document from database
+    await Document.findByIdAndDelete(req.params.documentId);
+    
+    res.json({
+      message: 'Document deleted successfully'
+    });
+    
+  } catch (error) {
+    console.error('Delete document error:', error);
+    res.status(500).json({ 
+      error: 'Failed to delete document' 
+    });
+  }
+});
+
 // Get document by ID
 router.get('/:id', authenticate, async (req, res) => {
   try {
@@ -290,43 +417,6 @@ router.put('/:id', authenticate, documentValidation, async (req, res) => {
   }
 });
 
-// Delete document
-router.delete('/:id', authenticate, async (req, res) => {
-  try {
-    const document = await Document.findById(req.params.id);
-
-    if (!document) {
-      return res.status(404).json({ 
-        error: 'Document not found' 
-      });
-    }
-
-    // Check if user is the owner
-    if (document.owner.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ 
-        error: 'Only document owner can delete the document' 
-      });
-    }
-
-    // Delete file from filesystem
-    if (fs.existsSync(document.filePath)) {
-      fs.unlinkSync(document.filePath);
-    }
-
-    await Document.findByIdAndDelete(req.params.id);
-
-    res.json({
-      message: 'Document deleted successfully'
-    });
-
-  } catch (error) {
-    console.error('Document delete error:', error);
-    res.status(500).json({ 
-      error: 'Failed to delete document' 
-    });
-  }
-});
-
 // Add comment to document
 router.post('/:id/comments', authenticate, [
   body('content').trim().notEmpty().withMessage('Comment content is required')
@@ -429,6 +519,92 @@ router.get('/:id/download', authenticate, async (req, res) => {
     console.error('Document download error:', error);
     res.status(500).json({ 
       error: 'Failed to download document' 
+    });
+  }
+});
+
+// Download signed document with certificate
+router.get('/:id/download-signed', authenticate, async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id)
+      .populate('signatures.signer', 'firstName lastName email')
+      .populate('owner', 'firstName lastName email');
+
+    if (!document) {
+      return res.status(404).json({ 
+        error: 'Document not found' 
+      });
+    }
+
+    // Check if user has access to this document
+    console.log('Download access check:');
+    console.log('Document owner:', document.owner);
+    console.log('Document owner ID:', document.owner._id);
+    console.log('User ID:', req.user._id);
+    console.log('Owner match:', document.owner._id.toString() === req.user._id.toString());
+    
+    const hasAccess = document.owner._id.toString() === req.user._id.toString() ||
+                     document.requiredSigners.some(signer => signer._id.toString() === req.user._id.toString()) ||
+                     document.optionalSigners.some(signer => signer._id.toString() === req.user._id.toString());
+
+    console.log('Has access:', hasAccess);
+
+    if (!hasAccess) {
+      return res.status(403).json({ 
+        error: 'Access denied' 
+      });
+    }
+
+    // Check if document is signed
+    if (document.status !== 'signed') {
+      return res.status(400).json({ 
+        error: 'Document is not signed yet' 
+      });
+    }
+
+    // Create signed document package
+    const signedDocumentPackage = {
+      document: {
+        id: document._id,
+        title: document.title,
+        description: document.description,
+        fileName: document.fileName,
+        fileSize: document.fileSize,
+        fileType: document.fileType,
+        status: document.status,
+        createdAt: document.createdAt,
+        signedAt: document.signedAt,
+        owner: document.owner,
+        fileHash: document.fileHash
+      },
+      signatures: document.signatures.map(sig => ({
+        signer: sig.signer,
+        signature: sig.signature,
+        signatureHash: sig.signatureHash,
+        blockchainTransactionHash: sig.blockchainTransactionHash,
+        signedAt: sig.signedAt,
+        ipAddress: sig.ipAddress,
+        userAgent: sig.userAgent
+      })),
+      certificate: {
+        issuedAt: new Date(),
+        documentHash: document.fileHash,
+        totalSignatures: document.signatures.length,
+        verificationUrl: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify/${document._id}`,
+        blockchainVerified: document.signatures.length > 0
+      }
+    };
+
+    // Set response headers for JSON download
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="signed_${document.fileName || 'document'}.json"`);
+    
+    res.json(signedDocumentPackage);
+
+  } catch (error) {
+    console.error('Signed document download error:', error);
+    res.status(500).json({ 
+      error: 'Failed to download signed document' 
     });
   }
 });

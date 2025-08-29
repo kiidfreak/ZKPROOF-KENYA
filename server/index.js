@@ -7,9 +7,12 @@ require('dotenv').config();
 
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
+const mongoose = require('mongoose');
 
 const connectDB = require('./config/database');
 const blockchainService = require('./services/blockchainService');
+const documentValidationService = require('./services/documentValidationService');
 const authRoutes = require('./routes/auth');
 const identityRoutes = require('./routes/identity');
 const documentRoutes = require('./routes/documents');
@@ -24,7 +27,7 @@ const PORT = process.env.PORT || 5000;
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ['https://yourdomain.com']
+    ? [process.env.CLIENT_URL || 'https://yourdomain.com']
     : ['http://localhost:3000'],
   credentials: true
 }));
@@ -48,6 +51,24 @@ if (process.env.NODE_ENV === 'development') {
 
 // Static files
 app.use('/uploads', express.static('uploads'));
+
+// API base route
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'BKCVerify API is running',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      identity: '/api/identity',
+      documents: '/api/documents',
+      signatures: '/api/signatures',
+      chat: '/api/chat',
+      forum: '/api/forum'
+    }
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -85,7 +106,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? ['https://yourdomain.com']
+      ? [process.env.CLIENT_URL || 'https://yourdomain.com']
       : ['http://localhost:3000'],
     credentials: true
   }
@@ -120,19 +141,28 @@ io.on('connection', (socket) => {
 // Start server
 const startServer = async () => {
   try {
-    // Connect to database
-    await connectDB();
+    // Try to connect to database (but don't fail if it doesn't work)
+    try {
+      await connectDB();
+    } catch (dbError) {
+      console.log('⚠️ Database connection failed, continuing without database...');
+    }
 
-    // Initialize blockchain connection
-    await blockchainService.initialize();
+    // Initialize services
+    await Promise.all([
+      blockchainService.initialize(),
+      documentValidationService.initialize()
+    ]);
 
     server.listen(PORT, () => {
-      console.log(`Server with Socket.io running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV}`);
-      console.log(`Blockchain: ${blockchainService.isConnected() ? 'Connected' : 'Disconnected'}`);
+      console.log(`🚀 Server with Socket.io running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🔗 Blockchain: ${blockchainService.isConnected() ? 'Connected' : 'Disconnected'}`);
+      console.log(`📄 Document Validation: Ready`);
+      console.log(`💾 Database: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };

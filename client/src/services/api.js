@@ -1,8 +1,25 @@
 import axios from 'axios';
 
+// Determine API URL based on environment
+const getApiUrl = () => {
+  // Check for environment variable first
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // For production, show error if no API URL is configured
+  if (process.env.NODE_ENV === 'production') {
+    console.error('REACT_APP_API_URL environment variable is not set. Please configure your Railway backend URL.');
+    return 'https://zkproof-kenya-production.up.railway.app/api';
+  }
+  
+  // For development, use localhost
+  return 'http://localhost:5000/api';
+};
+
 // Create axios instance
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: getApiUrl(),
   timeout: 10000,
 });
 

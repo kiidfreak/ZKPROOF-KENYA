@@ -47,7 +47,14 @@ router.post('/sign', authenticate, requireIdentityVerification, signatureValidat
     const isOptionalSigner = document.optionalSigners.some(signer => signer._id.toString() === req.user._id.toString());
     const isOwner = document.owner._id.toString() === req.user._id.toString();
 
-    if (!isRequiredSigner && !isOptionalSigner && !isOwner) {
+    // Prevent document owners from signing their own documents
+    if (isOwner) {
+      return res.status(403).json({ 
+        error: 'Document owners cannot sign their own documents' 
+      });
+    }
+
+    if (!isRequiredSigner && !isOptionalSigner) {
       return res.status(403).json({ 
         error: 'You are not authorized to sign this document' 
       });
@@ -98,8 +105,8 @@ router.post('/sign', authenticate, requireIdentityVerification, signatureValidat
     // Add signature to document
     const newSignature = {
       signer: req.user._id,
-      signature,
-      signatureHash,
+      signature: signature,
+      signatureHash: signatureHash,
       blockchainTransactionHash: blockchainResult.transactionHash,
       signedAt: new Date(),
       ipAddress: req.ip,
@@ -108,24 +115,141 @@ router.post('/sign', authenticate, requireIdentityVerification, signatureValidat
 
     document.signatures.push(newSignature);
 
-    // Update document status if all required signers have signed
+    // Check if document is fully signed
     if (document.isFullySigned()) {
       document.status = 'signed';
-    } else if (document.status === 'draft') {
-      document.status = 'pending';
+      document.signedAt = new Date();
     }
 
     await document.save();
 
-    // Populate signature information
+    // Populate the new signature for response
     await document.populate('signatures.signer', 'firstName lastName email');
 
     res.json({
       message: 'Document signed successfully',
       signature: newSignature,
-      blockchainTransaction: blockchainResult,
-      documentStatus: document.status,
-      completionPercentage: document.completionPercentage
+      blockchainTransaction: {
+        transactionHash: blockchainResult.transactionHash,
+        blockNumber: blockchainResult.blockNumber ? blockchainResult.blockNumber.toString() : blockchainResult.blockNumber,
+        signatureHash: blockchainResult.signatureHash
+      },
+      document: document.getSummary()
+    });
+
+  } catch (error) {
+    console.error('Document signing error:', error);
+    res.status(500).json({ 
+      error: 'Document signing failed. Please try again.' 
+    });
+  }
+});
+
+// Sign a document by ID (new endpoint for frontend)
+router.post('/sign/:documentId', authenticate, async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const { signature, signatureHash } = req.body;
+
+    // Find document
+    const document = await Document.findById(documentId)
+      .populate('owner', 'firstName lastName email')
+      .populate('requiredSigners', 'firstName lastName email')
+      .populate('optionalSigners', 'firstName lastName email');
+
+    if (!document) {
+      return res.status(404).json({ 
+        error: 'Document not found' 
+      });
+    }
+
+    // Check if document is in pending status
+    if (document.status !== 'pending') {
+      return res.status(400).json({ 
+        error: 'Document is not in pending status and cannot be signed' 
+      });
+    }
+
+    // Check identity verification status (warning only for demo)
+    if (!req.user.identityVerified) {
+      console.log('Warning: User signing document without identity verification:', req.user._id);
+    }
+
+    // Check authorization - document owners cannot sign their own documents
+    const isOwner = document.owner._id.toString() === req.user._id.toString();
+    const isRequiredSigner = document.requiredSigners.some(signer => signer._id.toString() === req.user._id.toString());
+    const isOptionalSigner = document.optionalSigners.some(signer => signer._id.toString() === req.user._id.toString());
+
+    // Prevent document owners from signing their own documents
+    if (isOwner) {
+      return res.status(403).json({ 
+        error: 'Document owners cannot sign their own documents' 
+      });
+    }
+
+    if (!isRequiredSigner && !isOptionalSigner) {
+      return res.status(403).json({ 
+        error: 'You are not authorized to sign this document' 
+      });
+    }
+
+    // Check if user has already signed
+    const hasAlreadySigned = document.signatures.some(sig => sig.signer.toString() === req.user._id.toString());
+    if (hasAlreadySigned) {
+      return res.status(400).json({ 
+        error: 'You have already signed this document' 
+      });
+    }
+
+    // Generate a simple signature for demo purposes
+    const demoSignature = signature || crypto.createHash('sha256')
+      .update(`${documentId}-${req.user._id}-${Date.now()}`)
+      .digest('hex');
+
+    const demoSignatureHash = signatureHash || crypto.createHash('sha256')
+      .update(demoSignature)
+      .digest('hex');
+
+    // Store signature on blockchain (simulated)
+    const blockchainResult = await blockchainService.storeDocumentSignature(
+      document._id.toString(),
+      demoSignature,
+      req.user.walletAddress || 'demo-wallet-address'
+    );
+
+    // Add signature to document
+    const newSignature = {
+      signer: req.user._id,
+      signature: demoSignature,
+      signatureHash: demoSignatureHash,
+      blockchainTransactionHash: blockchainResult.transactionHash,
+      signedAt: new Date(),
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    };
+
+    document.signatures.push(newSignature);
+
+    // Check if document is fully signed (simplified - mark as signed if owner signs)
+    if (isOwner || document.isFullySigned()) {
+      document.status = 'signed';
+      document.signedAt = new Date();
+    }
+
+    await document.save();
+
+    // Populate the new signature for response
+    await document.populate('signatures.signer', 'firstName lastName email');
+
+    res.json({
+      message: 'Document signed successfully',
+      signature: newSignature,
+      blockchainTransaction: {
+        transactionHash: blockchainResult.transactionHash,
+        blockNumber: blockchainResult.blockNumber ? blockchainResult.blockNumber.toString() : blockchainResult.blockNumber,
+        signatureHash: blockchainResult.signatureHash
+      },
+      document: document.getSummary()
     });
 
   } catch (error) {
@@ -337,16 +461,32 @@ router.get('/pending', authenticate, async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
 
-    // Find documents where user is a required or optional signer
+    console.log('Fetching pending signatures for user:', req.user._id);
+    console.log('User email:', req.user.email);
+
+    // Find documents where user should see pending signatures
     const query = {
       $or: [
+        // User is assigned as a required or optional signer
         { requiredSigners: req.user._id },
-        { optionalSigners: req.user._id }
+        { optionalSigners: req.user._id },
+        // User owns the document and it's pending (to track status)
+        { 
+          owner: req.user._id,
+          status: 'pending'
+        },
+        // For demo: include pending documents from other users
+        { 
+          status: 'pending',
+          owner: { $ne: req.user._id }
+        }
       ],
       status: { $in: ['draft', 'pending'] }
     };
 
-    const documents = await Document.find(query)
+    // For demo purposes: if no documents found with specific signers,
+    // include all pending documents from other users
+    let documents = await Document.find(query)
       .populate('owner', 'firstName lastName email')
       .populate('requiredSigners', 'firstName lastName email')
       .populate('optionalSigners', 'firstName lastName email')
@@ -355,15 +495,97 @@ router.get('/pending', authenticate, async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    // Filter out documents user has already signed
-    const pendingDocuments = documents.filter(doc => 
-      !doc.signatures.some(sig => sig.signer._id.toString() === req.user._id.toString())
-    );
+    // If no documents found, try a broader search for demo purposes
+    if (documents.length === 0) {
+      console.log('No documents found with specific query, trying broader search...');
+      const broaderQuery = {
+        status: 'pending',
+        owner: { $ne: req.user._id }
+      };
+      
+      documents = await Document.find(broaderQuery)
+        .populate('owner', 'firstName lastName email')
+        .populate('requiredSigners', 'firstName lastName email')
+        .populate('optionalSigners', 'firstName lastName email')
+        .populate('signatures.signer', 'firstName lastName email')
+        .sort({ createdAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit);
+    }
+
+    console.log('Query:', JSON.stringify(query, null, 2));
+
+    console.log('Found documents:', documents.length);
+    documents.forEach((doc, index) => {
+      console.log(`Document ${index + 1}:`, {
+        id: doc._id,
+        title: doc.title,
+        status: doc.status,
+        owner: doc.owner?.email,
+        requiredSigners: doc.requiredSigners?.map(s => s.email),
+        optionalSigners: doc.optionalSigners?.map(s => s.email)
+      });
+    });
+
+    // Filter and categorize documents
+    const pendingDocuments = documents.filter(doc => {
+      console.log('Checking document:', doc.title);
+      console.log('Document owner:', doc.owner._id.toString());
+      console.log('Current user:', req.user._id.toString());
+      console.log('Is owner?', doc.owner._id.toString() === req.user._id.toString());
+      
+      const isOwner = doc.owner._id.toString() === req.user._id.toString();
+      const hasSigned = doc.signatures.some(sig => sig.signer._id.toString() === req.user._id.toString());
+      
+      console.log('Has signed?', hasSigned);
+      
+      // Show document if:
+      // 1. User is assigned signer and hasn't signed yet
+      // 2. For demo: any pending document from other users
+      // Note: Owners cannot sign their own documents, so we don't show them in pending list
+      
+      if (isOwner) {
+        // Don't show owner's own documents in pending list since they can't sign them
+        return false;
+      } else {
+        // Non-owners can see documents they need to sign
+        return !hasSigned;
+      }
+    });
+
+    console.log('Final pending documents:', pendingDocuments.length);
+
+    // Debug: Check all pending documents in the database
+    const allPendingDocs = await Document.find({ status: 'pending' })
+      .populate('owner', 'firstName lastName email')
+      .populate('requiredSigners', 'firstName lastName email')
+      .populate('optionalSigners', 'firstName lastName email');
+    
+    console.log('All pending documents in database:', allPendingDocs.length);
+    allPendingDocs.forEach((doc, index) => {
+      console.log(`All pending doc ${index + 1}:`, {
+        id: doc._id,
+        title: doc.title,
+        owner: doc.owner?.email,
+        requiredSigners: doc.requiredSigners?.map(s => s.email),
+        optionalSigners: doc.optionalSigners?.map(s => s.email)
+      });
+    });
 
     const total = await Document.countDocuments(query);
 
     res.json({
-      documents: pendingDocuments.map(doc => doc.getSummary()),
+      documents: pendingDocuments.map(doc => {
+        const summary = doc.getSummary();
+        const isOwner = doc.owner._id.toString() === req.user._id.toString();
+        const isRequiredSigner = doc.requiredSigners.some(signer => signer._id.toString() === req.user._id.toString());
+        const isOptionalSigner = doc.optionalSigners.some(signer => signer._id.toString() === req.user._id.toString());
+        
+        return {
+          ...summary,
+          userRole: isOwner ? 'owner' : (isRequiredSigner ? 'required_signer' : (isOptionalSigner ? 'optional_signer' : 'viewer'))
+        };
+      }),
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / limit),
@@ -430,6 +652,51 @@ router.get('/history', authenticate, async (req, res) => {
     console.error('Signature history fetch error:', error);
     res.status(500).json({ 
       error: 'Failed to fetch signature history' 
+    });
+  }
+});
+
+// Demo endpoint to create a test pending document (for testing purposes)
+router.post('/demo/create-pending', authenticate, async (req, res) => {
+  try {
+    // Find another user to create a document for
+    const otherUser = await User.findOne({ _id: { $ne: req.user._id } });
+    
+    if (!otherUser) {
+      return res.status(400).json({ error: 'No other users found for demo' });
+    }
+    
+    // Create a demo document owned by another user
+    const demoDocument = new Document({
+      title: 'Demo Document for Signing',
+      description: 'This is a demo document created for testing signature functionality',
+      fileName: 'demo-document.pdf',
+      filePath: 'uploads/demo/demo-document.pdf',
+      fileSize: 1024,
+      fileType: 'application/pdf',
+      fileHash: 'demo-hash-123',
+      owner: otherUser._id,
+      status: 'pending',
+      submittedAt: new Date(),
+      requiredSigners: [req.user._id], // Current user is required to sign
+      metadata: {
+        category: 'contract',
+        priority: 'medium',
+        confidentiality: 'internal'
+      }
+    });
+    
+    await demoDocument.save();
+    
+    res.json({
+      message: 'Demo pending document created successfully',
+      document: demoDocument.getSummary()
+    });
+    
+  } catch (error) {
+    console.error('Demo document creation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create demo document' 
     });
   }
 });

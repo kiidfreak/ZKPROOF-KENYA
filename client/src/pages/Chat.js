@@ -1,16 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSocket } from '../contexts/SocketContext';
 import { chatAPI } from '../services/api';
-import { UserIcon } from '@heroicons/react/24/solid';
+// import { UserIcon } from '@heroicons/react/24/solid';
+import toast from 'react-hot-toast';
 
 const Chat = () => {
   const { user } = useAuth();
+  const { socket, isConnected, emit, on, off } = useSocket();
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const messagesEndRef = useRef(null);
   const [hoveredMsgId, setHoveredMsgId] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState(new Set());
 
   // 유저 목록 불러오기
   useEffect(() => {
@@ -18,6 +22,54 @@ const Chat = () => {
       .then(res => res.json())
       .then(data => setUsers(data.users.filter(u => u.id !== user.id)));
   }, [user]);
+
+  // Real-time message handling
+  useEffect(() => {
+    if (!socket) return;
+
+    // Listen for incoming private messages
+    const handlePrivateMessage = (data) => {
+      console.log('Received real-time message:', data);
+      
+      // Add message to current chat if it's from the selected user
+      if (selectedUser && data.from === selectedUser.id) {
+        setMessages(prev => [...prev, {
+          _id: Date.now().toString(), // Temporary ID
+          from: data.from,
+          to: user.id,
+          content: data.message,
+          timestamp: data.timestamp,
+          read: false
+        }]);
+        
+        // Show notification if chat is not focused
+        if (document.hidden) {
+          toast.success(`New message from ${selectedUser.firstName} ${selectedUser.lastName}`);
+        }
+      }
+    };
+
+    // Listen for online/offline status updates
+    const handleUserStatus = (data) => {
+      if (data.type === 'online') {
+        setOnlineUsers(prev => new Set([...prev, data.userId]));
+      } else if (data.type === 'offline') {
+        setOnlineUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(data.userId);
+          return newSet;
+        });
+      }
+    };
+
+    on('private_message', handlePrivateMessage);
+    on('user_status', handleUserStatus);
+
+    return () => {
+      off('private_message', handlePrivateMessage);
+      off('user_status', handleUserStatus);
+    };
+  }, [socket, selectedUser, user.id, on, off]);
 
   // 상대방 선택 시 메시지 불러오기
   useEffect(() => {
@@ -31,9 +83,32 @@ const Chat = () => {
   // 메시지 전송
   const sendMessage = async () => {
     if (selectedUser && input.trim()) {
-      const res = await chatAPI.sendMessage(selectedUser.id, input);
-      setMessages((prev) => [...prev, res.data.message]);
-      setInput('');
+      try {
+        // Send via HTTP API (for persistence)
+        const res = await chatAPI.sendMessage(selectedUser.id, input);
+        const newMessage = res.data.message;
+        
+        // Add to local messages immediately
+        setMessages((prev) => [...prev, newMessage]);
+        setInput('');
+        
+        // Send real-time message via socket
+        if (isConnected) {
+          emit('private_message', {
+            to: selectedUser.id,
+            message: input
+          });
+        }
+        
+        // Scroll to bottom
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+        
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        toast.error('Failed to send message. Please try again.');
+      }
     }
   };
 
@@ -65,8 +140,14 @@ const Chat = () => {
               <li key={u.id}
                   className={`flex items-center gap-3 p-2 mb-2 cursor-pointer rounded transition-colors duration-150 ${selectedUser?.id === u.id ? 'bg-blue-700 text-white' : 'text-blue-100 hover:bg-gray-700'}`}
                   onClick={() => setSelectedUser(u)}>
-                <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
-                  <span className="text-sm font-medium text-white">{u.firstName?.charAt(0)}</span>
+                <div className="relative">
+                  <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center">
+                    <span className="text-sm font-medium text-white">{u.firstName?.charAt(0)}</span>
+                  </div>
+                  {/* Online status indicator */}
+                  <div className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-gray-800 ${
+                    onlineUsers.has(u.id) ? 'bg-green-500' : 'bg-gray-500'
+                  }`}></div>
                 </div>
                 <span className="font-medium flex items-center gap-1 min-w-[90px]">
                   {u.firstName} {u.lastName}
@@ -83,6 +164,13 @@ const Chat = () => {
       <div className="flex-1 flex flex-col bg-[#23272f]">
         {/* 채팅방 헤더 */}
         <div className="h-20 flex flex-col justify-center px-6 border-b border-gray-700 bg-[#232c3a]">
+          {/* Connection Status */}
+          <div className="absolute top-2 right-4 flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-xs text-gray-400">
+              {isConnected ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
           {selectedUser ? (
             <div className="w-full">
               <div className="grid grid-cols-4 gap-4 mb-1 text-xs text-gray-400 font-semibold items-center">
