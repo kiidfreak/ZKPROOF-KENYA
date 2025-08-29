@@ -57,10 +57,9 @@ NODE_ENV=production
 
 ## **Configuration Files**
 
-### **Root vercel.json** (for monorepo)
+### **Root vercel.json** (correct configuration)
 ```json
 {
-  "version": 2,
   "builds": [
     {
       "src": "client/package.json",
@@ -70,29 +69,20 @@ NODE_ENV=production
       }
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
-}
-```
-
-### **Client vercel.json** (for client directory)
-```json
-{
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/"
     }
   ]
 }
 ```
+
+**Note**: This configuration tells Vercel to:
+- Build only the `client` directory
+- Use the `client/package.json` for build settings
+- Output to the `build` directory
+- Handle all routes by redirecting to root
 
 ---
 
