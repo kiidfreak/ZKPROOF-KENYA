@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import { chatAPI } from '../services/api';
-import { UserIcon } from '@heroicons/react/24/solid';
+// import { UserIcon } from '@heroicons/react/24/solid';
 import toast from 'react-hot-toast';
 
 const Chat = () => {

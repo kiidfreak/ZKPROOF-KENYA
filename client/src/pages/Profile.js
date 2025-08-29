@@ -18,12 +18,12 @@ const Profile = () => {
     }
   });
   const [myPosts, setMyPosts] = useState([]);
-  const [loadingPosts, setLoadingPosts] = useState(true);
+  // const [loadingPosts, setLoadingPosts] = useState(true);
   const [editPostId, setEditPostId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('General');
-  const [editError, setEditError] = useState('');
+  // const [editError, setEditError] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,31 +79,31 @@ const Profile = () => {
       } catch (e) {
         setMyPosts([]);
       } finally {
-        setLoadingPosts(false);
+        // setLoadingPosts(false);
       }
     };
     fetchMyPosts();
   }, [user.id]);
 
-  const handleDelete = async (postId) => {
-    if (!window.confirm('Are you sure you want to delete this post?')) return;
-    try {
-      await axios.delete(`/api/forum/posts/${postId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setMyPosts(myPosts.filter(p => p._id !== postId));
-    } catch (e) {
-      alert('Failed to delete post');
-    }
-  };
+  // const handleDelete = async (postId) => {
+  //   if (!window.confirm('Are you sure you want to delete this post?')) return;
+  //   try {
+  //     await axios.delete(`/api/forum/posts/${postId}`, {
+  //       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  //     });
+  //     setMyPosts(myPosts.filter(p => p._id !== postId));
+  //   } catch (e) {
+  //     alert('Failed to delete post');
+  //   }
+  // };
 
-  const startEdit = (post) => {
-    setEditPostId(post._id);
-    setEditTitle(post.title);
-    setEditContent(post.content);
-    setEditCategory(post.category || 'General');
-    setEditError('');
-  };
+  // const startEdit = (post) => {
+  //   setEditPostId(post._id);
+  //   setEditTitle(post.title);
+  //   setEditContent(post.content);
+  //   setEditCategory(post.category || 'General');
+  //   setEditError('');
+  // };
 
   const cancelEdit = () => {
     setEditPostId(null);
@@ -113,26 +113,26 @@ const Profile = () => {
     setEditError('');
   };
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!editTitle.trim() || !editContent.trim()) {
-      setEditError('Title and content are required.');
-      return;
-    }
-    try {
-      await axios.patch(`/api/forum/posts/${editPostId}`, {
-        title: editTitle,
-        content: editContent,
-        category: editCategory
-      }, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setMyPosts(myPosts.map(p => p._id === editPostId ? { ...p, title: editTitle, content: editContent, category: editCategory } : p));
-      cancelEdit();
-    } catch (e) {
-      setEditError(e.response?.data?.error || 'Failed to update post');
-    }
-  };
+  // const handleEditSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (!editTitle.trim() || !editContent.trim()) {
+  //     setEditError('Title and content are required.');
+  //     return;
+  //   }
+  //   try {
+  //   await axios.patch(`/api/forum/posts/${editPostId}`, {
+  //     title: editTitle,
+  //     content: editContent,
+  //     category: editCategory
+  //   }, {
+  //     headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+  //   });
+  //   setMyPosts(myPosts.map(p => p._id === editPostId ? { ...p, title: editTitle, content: editContent, category: editCategory } : p));
+  //   cancelEdit();
+  //   } catch (e) {
+  //     setEditError(e.response?.data?.error || 'Failed to update post');
+  //   }
+  // };
 
   return (
     <div className="space-y-6">

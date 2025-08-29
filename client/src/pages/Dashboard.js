@@ -11,9 +11,9 @@ import {
   ClockIcon,
   ExclamationTriangleIcon,
   PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  EyeIcon
+  // PencilIcon,
+  // TrashIcon,
+  // EyeIcon
 } from '@heroicons/react/24/outline';
 
 const Dashboard = () => {
@@ -127,7 +127,7 @@ const Dashboard = () => {
     };
 
     fetchStats();
-  }, [user?.identityVerified]);
+  }, [user?.identityVerified, user?._id]);
 
   // Fetch recent activities
   useEffect(() => {
@@ -245,7 +245,7 @@ const Dashboard = () => {
     };
 
     fetchRecentActivities();
-  }, [user?.identityVerified, user?.verificationData?.verificationDate]);
+  }, [user?.identityVerified, user?.verificationData?.verificationDate, user?.updatedAt]);
 
   // Helper function to format relative time
   const formatRelativeTime = (timestamp) => {

@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const Documents = () => {
-  const { user } = useAuth();
+  // const { user } = useAuth();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -438,7 +438,7 @@ const Documents = () => {
       });
 
       if (response.ok) {
-        const result = await response.json();
+        // const result = await response.json();
         toast.success('Document uploaded successfully!');
         setShowUploadModal(false);
         setUploadForm({
