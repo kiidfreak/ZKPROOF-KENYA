@@ -1,8 +1,13 @@
 # BKCVerify - Blockchain Identity Verification Platform
 
-## 🎯 **Status: Phase 1 Complete - Production Ready**
+## 🎯 **Status: Production Deployed - Live & Operational**
 
-**A fully functional blockchain-based identity verification and document management platform with real-time communication capabilities.**
+**A fully functional blockchain-based identity verification and document management platform deployed and running in production.**
+
+### **🔗 Live Application URLs**
+- **🌐 Frontend**: https://zkproof-kenya-ooux-5x1f6xoe5-kiidfreaks-projects.vercel.app
+- **🔧 Backend API**: https://zkproof-kenya-production.up.railway.app/api
+- **💚 Health Check**: https://zkproof-kenya-production.up.railway.app/api/health
 
 ---
 
@@ -306,7 +311,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 **Support**
 
 For support, questions, or collaboration:
-- **Email** - [Your Email]
+- **Email** - imaina671@gmail.com
 - **Documentation** - See `PROJECT_STATUS.md` for detailed status
 - **Issues** - Create an issue in the repository
 
