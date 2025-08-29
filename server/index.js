@@ -7,6 +7,8 @@ require('dotenv').config();
 
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
+const mongoose = require('mongoose');
 
 const connectDB = require('./config/database');
 const blockchainService = require('./services/blockchainService');
@@ -121,8 +123,12 @@ io.on('connection', (socket) => {
 // Start server
 const startServer = async () => {
   try {
-    // Connect to database
-    await connectDB();
+    // Try to connect to database (but don't fail if it doesn't work)
+    try {
+      await connectDB();
+    } catch (dbError) {
+      console.log('⚠️ Database connection failed, continuing without database...');
+    }
 
     // Initialize services
     await Promise.all([
@@ -131,13 +137,14 @@ const startServer = async () => {
     ]);
 
     server.listen(PORT, () => {
-      console.log(`Server with Socket.io running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV}`);
-      console.log(`Blockchain: ${blockchainService.isConnected() ? 'Connected' : 'Disconnected'}`);
-      console.log(`Document Validation: Ready`);
+      console.log(`🚀 Server with Socket.io running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🔗 Blockchain: ${blockchainService.isConnected() ? 'Connected' : 'Disconnected'}`);
+      console.log(`📄 Document Validation: Ready`);
+      console.log(`💾 Database: ${mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };

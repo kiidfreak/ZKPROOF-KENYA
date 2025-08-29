@@ -19,10 +19,17 @@ class DocumentValidationService {
   async initialize() {
     try {
       if (tesseract) {
-        // Test if tesseract is available on the system
-        await this.extractTextFromImage('test'); // This will fail but we can catch it
-        this.initialized = true;
-        console.log('Document validation service initialized with node-tesseract-ocr');
+        // Test if tesseract is available on the system by checking if the command exists
+        const { exec } = require('child_process');
+        exec('tesseract --version', (error) => {
+          if (error) {
+            console.log('Tesseract not found on system. Using fallback validation.');
+            this.initialized = false;
+          } else {
+            console.log('Document validation service initialized with node-tesseract-ocr');
+            this.initialized = true;
+          }
+        });
       } else {
         this.initialized = false;
         console.log('Document validation service initialized with fallback validation only');
@@ -69,7 +76,10 @@ class DocumentValidationService {
 
   async preprocessImage(imagePath) {
     try {
-      const outputPath = imagePath.replace(/\.[^/.]+$/, '_processed.jpg');
+      // Create a unique temporary file path
+      const timestamp = Date.now();
+      const randomSuffix = Math.random().toString(36).substring(7);
+      const outputPath = imagePath.replace(/\.[^/.]+$/, `_processed_${timestamp}_${randomSuffix}.jpg`);
       
       await sharp(imagePath)
         .resize(2000, null, { withoutEnlargement: true }) // Resize for better OCR

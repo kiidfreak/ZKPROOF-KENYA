@@ -95,7 +95,7 @@ Our platform provides a **decentralized identity verification system** with inte
 
 ## Development Timeline
 
-**Phase 1 (Completed - 8 weeks):**
+**Phase 1 (Completed - 8 weeks):**ps
 - Core identity verification system
 - Document management and signing
 - Basic blockchain integration

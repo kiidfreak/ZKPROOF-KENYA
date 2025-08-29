@@ -1,8 +1,23 @@
 import axios from 'axios';
 
+// Determine API URL based on environment
+const getApiUrl = () => {
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  
+  // For production, use the Railway backend URL
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://your-railway-app-name.railway.app/api';
+  }
+  
+  // For development, use localhost
+  return 'http://localhost:5000/api';
+};
+
 // Create axios instance
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: getApiUrl(),
   timeout: 10000,
 });
 
