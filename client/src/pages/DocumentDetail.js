@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { DocumentTextIcon, CheckCircleIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/AuthContext';
 // import toast from 'react-hot-toast';
 
 const DocumentDetail = () => {

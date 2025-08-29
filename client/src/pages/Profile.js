@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+// import axios from 'axios';
 
 const Profile = () => {
   const { user, updateProfile } = useAuth();
@@ -17,12 +17,12 @@ const Profile = () => {
       position: user?.profile?.position || ''
     }
   });
-  const [myPosts, setMyPosts] = useState([]);
+  // const [myPosts, setMyPosts] = useState([]);
   // const [loadingPosts, setLoadingPosts] = useState(true);
-  const [editPostId, setEditPostId] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editContent, setEditContent] = useState('');
-  const [editCategory, setEditCategory] = useState('General');
+  // const [editPostId, setEditPostId] = useState(null);
+  // const [editTitle, setEditTitle] = useState('');
+  // const [editContent, setEditContent] = useState('');
+  // const [editCategory, setEditCategory] = useState('General');
   // const [editError, setEditError] = useState('');
 
   const handleChange = (e) => {
@@ -68,22 +68,22 @@ const Profile = () => {
     }
   };
 
-  useEffect(() => {
-    // 내 게시글 불러오기
-    const fetchMyPosts = async () => {
-      setLoadingPosts(true);
-      try {
-        const res = await axios.get('/api/forum/posts');
-        // 본인이 작성한 글만 필터링
-        setMyPosts(res.data.posts.filter(post => post.author?._id === user.id));
-      } catch (e) {
-        setMyPosts([]);
-      } finally {
-        // setLoadingPosts(false);
-      }
-    };
-    fetchMyPosts();
-  }, [user.id]);
+  // useEffect(() => {
+  //   // 내 게시글 불러오기
+  //   const fetchMyPosts = async () => {
+  //     // setLoadingPosts(true);
+  //     try {
+  //       const res = await axios.get('/api/forum/posts');
+  //       // 본인이 작성한 글만 필터링
+  //       setMyPosts(res.data.posts.filter(post => post.author?._id === user.id));
+  //     } catch (e) {
+  //       setMyPosts([]);
+  //     } finally {
+  //       // setLoadingPosts(false);
+  //     }
+  //   };
+  //   fetchMyPosts();
+  // }, [user.id]);
 
   // const handleDelete = async (postId) => {
   //   if (!window.confirm('Are you sure you want to delete this post?')) return;
@@ -105,13 +105,13 @@ const Profile = () => {
   //   setEditError('');
   // };
 
-  const cancelEdit = () => {
-    setEditPostId(null);
-    setEditTitle('');
-    setEditContent('');
-    setEditCategory('General');
-    setEditError('');
-  };
+  // const cancelEdit = () => {
+  //   setEditPostId(null);
+  //   setEditTitle('');
+  //   setEditContent('');
+  //   setEditCategory('General');
+  //   setEditError('');
+  // };
 
   // const handleEditSubmit = async (e) => {
   //   e.preventDefault();

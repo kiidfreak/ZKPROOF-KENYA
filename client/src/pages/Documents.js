@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DocumentTextIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
