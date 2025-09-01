@@ -135,12 +135,12 @@ const Home = () => {
 
           <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {features.map((feature) => (
-              <div key={feature.name} className="bg-[#232c3a] card text-center border border-gray-700">
+              <div key={feature.name} className="bg-[#232c3a] text-center border border-gray-700 p-6 rounded-lg">
                 <div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-lg ${feature.color}`}>
                   <feature.icon className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="mt-4 text-lg font-medium text-gray-100">{feature.name}</h3>
-                <p className="mt-2 text-sm text-gray-400">{feature.description}</p>
+                <h3 className="mt-4 text-lg font-medium text-white">{feature.name}</h3>
+                <p className="mt-2 text-sm text-gray-300">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -183,7 +183,7 @@ const Home = () => {
             <div className="mt-10 lg:mt-0">
               <div className="text-center">
                 <ShieldCheckIcon className="mx-auto h-16 w-16 text-blue-400" />
-                <h3 className="mt-4 text-xl font-medium text-gray-100">
+                <h3 className="mt-4 text-xl font-medium text-white">
                   Blockchain Security
                 </h3>
                 <p className="mt-2 text-gray-300">
@@ -237,7 +237,7 @@ const Home = () => {
               Blockchain-based identity verification and electronic document signing system
             </p>
             <p className="mt-2 text-sm text-gray-500">
-              © 2024 BKC Verify. All rights reserved.
+              © 2025 BKC Verify. All rights reserved.
             </p>
           </div>
         </div>
